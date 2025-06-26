@@ -51,16 +51,15 @@ def refine_microlensing_parameters(themodel, microlensing_parameters, time):
 
     return new_ml_parameters
 
-def refine_flux_parameters(zp=27.85):
+def refine_flux_parameters(source_mag,blend_mag,zp=27.85):
 
-    f_source = 10 ** ((zp - baseline) / 2.5)
-    g_blend = np.random.uniform(0, 1)
+    f_source = 10 ** ((zp - source_mag) / 2.5)
 
-    fblend = f_source * g_blend
+    fblend = 10 ** ((zp - blend_magg) / 2.5)
 
     return f_source,f_blend
     
-def simulate_lcs(ml_event,model_choice='PSPL',zps=[]):
+def simulate_lcs(ml_event,model_choice='PSPL',source_mags=[],blend_mags = [],zps=[]):
 
     if model_choice == 'PSPL':
 
@@ -86,7 +85,7 @@ def simulate_lcs(ml_event,model_choice='PSPL',zps=[]):
     for ind,telo in enumerate(ml_event.telescopes):
     
         try:
-            new_fs, new_fb = refine_flux_parameters(zp=zps[ind])
+            new_fs, new_fb = refine_flux_parameters(source_mags[ind],blend_mags[ind],zp=zps[ind])
             pyLIMA_parameters['fsource_'+str(telo.name)] = new_fs
             pyLIMA_parameters['fblend_'+str(telo.name)] = new_fb
         except:
