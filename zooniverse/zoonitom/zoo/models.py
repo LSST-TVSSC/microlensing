@@ -1,18 +1,65 @@
-# from django.db import models
-# 
-# from tom_targets.base_models import BaseTarget
-# 
-# 
-# class UserDefinedTarget(BaseTarget):
-#     """
-#     A target with fields defined by a user.
-#     """
-# 
-#     class Meta:
-#         verbose_name = "target"
-#         permissions = (
-#             ('view_target', 'View Target'),
-#             ('add_target', 'Add Target'),
-#             ('change_target', 'Change Target'),
-#             ('delete_target', 'Delete Target'),
-#         )
+from django.db import models
+
+
+class ZooniverseSurvey(models.Model):
+    name = models.CharField(max_length=50)
+
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+
+class ZooniverseTarget(models.Model):
+    survey = models.ForeignKey(ZooniverseSurvey, on_delete=models.CASCADE)
+    identifier = models.CharField(max_length=128)
+
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+
+class ZooniverseSubject(models.Model):
+    subject_id = models.BigIntegerField(unique=True)
+    target = models.ForeignKey(
+        ZooniverseTarget, on_delete=models.CASCADE, null=True, blank=True
+    )
+
+    sequence = models.CharField(
+        max_length=50, help_text="Sector, data release, etc.", null=True, blank=True
+    )
+    data_url = models.URLField()
+    start_time = models.DateTimeField(
+        null=True, blank=True, help_text="Earliest time in the light curve"
+    )
+    end_time = models.DateTimeField(
+        null=True, blank=True, help_text="Latest time in the light curve"
+    )
+
+    metadata = models.JSONField()
+
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+
+class ZooniverseClassification(models.Model):
+    classification_id = models.BigIntegerField(unique=True)
+    subject = models.ForeignKey(ZooniverseSubject, on_delete=models.CASCADE)
+
+    user_id = models.BigIntegerField(null=True, blank=True)
+    timestamp = models.DateTimeField()
+    annotation = models.JSONField()
+
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+
+class ZooniverseTargetReduction(models.Model):
+    """
+    Reduced classifications for targets.
+    """
+
+    target = models.ForeignKey(ZooniverseTarget, on_delete=models.CASCADE)
+    classifications = models.ManyToManyField(ZooniverseClassification)
+
+    reduced_annotations = models.JSONField()
+
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)

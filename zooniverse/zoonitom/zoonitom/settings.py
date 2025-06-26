@@ -355,6 +355,6 @@ ZOONIVERSE_PROJECT_ID = os.environ.get("ZOONIVERSE_PROJECT_ID")
 ZOONIVERSE_WORKFLOW_ID = os.environ.get("ZOONIVERSE_WORKFLOW_ID")
 
 try:
-    from local_settings import *  # noqa
+    from .local_settings import *  # noqa
 except ImportError:
     pass
