@@ -21,7 +21,7 @@ def generate_subject_export():
 
 
 def generate_classification_export():
-    return workflow.generate_export("classifications")
+    return project.generate_export("classifications")
 
 
 def get_subject_export():
@@ -29,7 +29,7 @@ def get_subject_export():
 
 
 def get_classification_export():
-    return workflow.get_export("classifications").csv_dictreader()
+    return project.get_export("classifications").csv_dictreader()
 
 
 def import_classifications():
@@ -63,7 +63,7 @@ def import_classifications():
 
         subject = ZooniverseSubject.objects.get(subject_id=subject_id)
 
-        annotation = json.loads(c["annotation"])
+        annotation = json.loads(c["annotations"])
         timestamp = date_parse(c["created_at"])
 
         ZooniverseClassification.objects.create(

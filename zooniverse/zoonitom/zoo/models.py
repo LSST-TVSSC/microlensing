@@ -1,11 +1,17 @@
 from django.db import models
 
+from zoo.client import project
+from collections import Counter
+
 
 class ZooniverseSurvey(models.Model):
     name = models.CharField(max_length=50)
 
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
 
 
 class ZooniverseTarget(models.Model):
@@ -14,6 +20,9 @@ class ZooniverseTarget(models.Model):
 
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.identifier
 
 
 class ZooniverseSubject(models.Model):
@@ -37,6 +46,16 @@ class ZooniverseSubject(models.Model):
 
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
+
+    def talk_url(self):
+        return f"https://www.zooniverse.org/projects/{project.slug}/talk/subjects/{self.subject_id}"
+
+    def annotation_totals(self):
+        annotations = self.zooniverseclassification_set.values_list(
+            "annotation", flat=True
+        )
+        annotations = [a[0]["value"] for a in annotations]
+        return dict(Counter(annotations))
 
 
 class ZooniverseClassification(models.Model):

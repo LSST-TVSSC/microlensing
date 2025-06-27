@@ -16,7 +16,14 @@ Including another URLconf
 
 from django.urls import path, include
 
+from zoo.views import ZooniverseTargetListView, ZooniverseTargetDetailView
+
+
 urlpatterns = [
-    path("", include("tom_common.urls")),
-    path("zoo/", include("zoo.urls")),
+    path("", ZooniverseTargetListView.as_view(), name="zooniversetarget_list"),
+    path(
+        "<int:pk>/",
+        ZooniverseTargetDetailView.as_view(),
+        name="zooniverse_target_detail",
+    ),
 ]
