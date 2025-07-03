@@ -31,7 +31,7 @@ def process_light_curve(dict_lc):
     if delta_chi_squared_kmt>0.9:
         return f"{ID}  {dict_lc[ID]['ra_coor']}  {dict_lc[ID]['dec_coor']}  {delta_chi_squared_kmt}  {t0}  {t_eff}  {f1}  {f0} {which_regim}\n"
     else:
-    return None
+        return None
 
 
 
