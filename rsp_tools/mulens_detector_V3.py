@@ -22,13 +22,16 @@ def chunked(lst, n):
         yield lst[i:i + n]
 
 def process_light_curve(dict_lc):
-            ID = list(dict_lc.keys())[0]
-            rband_ind = np.where(dict_lc[ID]['band']=='r')
-            time = dict_lc[ID]['time'][rband_ind]
-            flux = dict_lc[ID]['flux'][rband_ind]
-            flux_err = dict_lc[ID]['flux_err'][rband_ind]
-            delta_chi_squared_kmt, (t0, t_eff, f1, f0), which_regim = run_kmtnet_fit(time, flux, flux_err)
-            return delta_chi_squared_kmt, (t0, t_eff, f1, f0), which_regim
+    ID = list(dict_lc.keys())[0]
+    rband_ind = np.where(dict_lc[ID]['band']=='r')
+    time = dict_lc[ID]['time'][rband_ind]
+    flux = dict_lc[ID]['flux'][rband_ind]
+    flux_err = dict_lc[ID]['flux_err'][rband_ind]
+    delta_chi_squared_kmt, (t0, t_eff, f1, f0), which_regim = run_kmtnet_fit(time, flux, flux_err)
+    if delta_chi_squared_kmt>0.9:
+        return f"{ID}  {dict_lc[ID]['ra_coor']}  {dict_lc[ID]['dec_coor']}  {delta_chi_squared_kmt}  {t0}  {t_eff}  {f1}  {f0} {which_regim}\n"
+    else:
+    return None
 
 
 
@@ -91,7 +94,7 @@ def run(args):
     n_chuncks = int(len(np.array(objtab['diaObjectId'].data))/500)+1
     
     with open('./mulens_candidates.dat', 'w') as fout:
-        fout.write('# diaObjectId   coord_ra  coord_dec  delta_chi_squared_kmt  t0  t_eff  f1  f0\n')
+        fout.write('# diaObjectId   coord_ra  coord_dec  delta_chi_squared_kmt  t0  t_eff  f1  f0 which_regim\n')
     
         chunk_counter = 0
         IDs = np.array(objtab['diaObjectId'].data)
