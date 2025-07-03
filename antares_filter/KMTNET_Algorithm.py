@@ -52,7 +52,34 @@ from scipy.optimize import minimize
 import warnings
 import weightedstats as ws
 
+# --- Model Definitions ---
+# Functions for high and low magnification regimes,
+# params: (t, f_1, f_0, t0, t_eff)
 
+def Ft_high(t, f_1, f_0, t0, t_eff):
+    # High-mag analytic approximation 
+    Q = 1 + ((t - t0) / t_eff)**2
+    return np.abs(f_1) * (Q**(-1.0 / 2)) + np.abs(f_0)
+
+def Ft_low(t, f_1, f_0, t0, t_eff):
+     # Low-mag analytic approximation
+    Q = 1 + ((t - t0) / t_eff)**2
+    return np.abs(f_1) * (1 - (1 + Q / 2)**-2)**(-1.0 / 2) + np.abs(f_0)
+
+ # --- Chi2 Functions for Minimization ---
+def chi2_high(f_params, t, flux, flux_err, t0, teff):
+    # Compute chi^2 for the high-mag model (minimize over f1, f0)
+    f_1, f_0 = f_params
+    model = Ft_high(t, f_1, f_0, t0, teff)
+    inv_sigma2 = 1.0 / (flux_err**2)
+    return np.sum((flux - model)**2 * inv_sigma2)
+
+def chi2_low(f_params, t, flux, flux_err, t0, teff):
+    # Compute chi^2 for the low-mag model
+    f_1, f_0 = f_params
+    model = Ft_low(t, f_1, f_0, t0, teff)
+    inv_sigma2 = 1.0 / (flux_err**2)
+    return np.sum((flux - model)**2 * inv_sigma2)
 
 def run_kmtnet_fit(times, fluxes, flux_errors):
 
@@ -80,37 +107,10 @@ def run_kmtnet_fit(times, fluxes, flux_errors):
         'flux_err': flux_errors
     })
 
-    # --- Model Definitions ---
-    # Functions for high and low magnification regimes,
-    # params: (t, f_1, f_0, t0, t_eff)
-    
-    def Ft_high(t, f_1, f_0, t0, t_eff):
-        # High-mag analytic approximation 
-        Q = 1 + ((t - t0) / t_eff)**2
-        return np.abs(f_1) * (Q**(-1.0 / 2)) + np.abs(f_0)
 
-    def Ft_low(t, f_1, f_0, t0, t_eff):
-         # Low-mag analytic approximation
-        Q = 1 + ((t - t0) / t_eff)**2
-        return np.abs(f_1) * (1 - (1 + Q / 2)**-2)**(-1.0 / 2) + np.abs(f_0)
-
-     # --- Chi2 Functions for Minimization ---
-    def chi2_high(f_params, t, flux, flux_err, t0, teff):
-        # Compute chi^2 for the high-mag model (minimize over f1, f0)
-        f_1, f_0 = f_params
-        model = Ft_high(t, f_1, f_0, t0, teff)
-        inv_sigma2 = 1.0 / (flux_err**2)
-        return np.sum((flux - model)**2 * inv_sigma2)
-
-    def chi2_low(f_params, t, flux, flux_err, t0, teff):
-        # Compute chi^2 for the low-mag model
-        f_1, f_0 = f_params
-        model = Ft_low(t, f_1, f_0, t0, teff)
-        inv_sigma2 = 1.0 / (flux_err**2)
-        return np.sum((flux - model)**2 * inv_sigma2)
 
     # --- Grid Search: Build t0-teff grid for nonlinear fitting ---
-    teff_min, teff_max = 1, 100
+    teff_min, teff_max = 1, 50
     teff_list, t0_tE_list = [], []
     current_teff = teff_min
 
@@ -233,4 +233,4 @@ def run_kmtnet_fit(times, fluxes, flux_errors):
 
     # Return: delta chi2, best-fit physical params
     # If delta_chi_squared_kmt > 0.9, the light curve would be a microlensing candidate.
-    return delta_chi_squared_kmt, (t0, t_eff, f1, f0)
+    return delta_chi_squared_kmt, (t0, t_eff, f1, f0), which_regim
