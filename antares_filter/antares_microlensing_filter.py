@@ -155,6 +155,9 @@ class microlensing(dk.Filter):
         if 'horizons_targetname' in locus_params['properties'].keys():
             known_var = True
 
+        #FIXME
+        #locus.catalog_objects - matched catalog objects from other surveys - RC3 catalog or SDSS etc
+
         return known_var
 
     def is_microlensing_candidate(self, locus, times, mags, errors):
