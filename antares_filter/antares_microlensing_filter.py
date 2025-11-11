@@ -1,6 +1,6 @@
 # Filter for microlensing events designed for the ANTARES broker
 
-# Authors: Somayeh Khakpash, Natasha Abrams, Rachel Street
+# Authors: Somayeh Khakpash, Natasha Abrams, Rachel Street, Atousa Kalantari
 
 import antares
 import antares.devkit as dk
@@ -12,6 +12,7 @@ import astropy
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy.stats import skew
+from KMTNET_Algorithm import run_kmtnet_fit
 
 # Initialize development kit client
 dk.init()
