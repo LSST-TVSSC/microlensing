@@ -154,9 +154,14 @@ class microlensing(dk.Filter):
         if 'horizons_targetname' in locus_params['properties'].keys():
             known_var = True
 
-        #FIXME
-        #locus.catalog_objects - matched catalog objects from other surveys - RC3 catalog or SDSS etc
-
+        # Check whether the ANTARES crossmatch against known galaxy catalogs threw up any matches
+        # The locus.catalog_objects attribute is a dictionary of lists of known objects for each
+        # catalogs.  If a match has been found, then the key for the corresponding catalog will be
+        # in the list of keys.  So we can use that to check for matches with galaxy catalogs.
+        # Of those available in the list the Gemini NIR survey of known quasars is the closest
+        if 'gnirs_dqs' in locus.catalog_objects.keys():
+            known_var = True
+                
         return known_var
 
     def calculate_eta(mag):
