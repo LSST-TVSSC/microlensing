@@ -1,6 +1,6 @@
 # Filter for microlensing events designed for the ANTARES broker
 
-# Authors: Somayeh Khakpash, Natasha Abrams, Rachel Street
+# Authors: Somayeh Khakpash, Natasha Abrams, Rachel Street, Atousa Kalantari
 
 import antares
 import antares.devkit as dk
@@ -12,6 +12,7 @@ import astropy
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy.stats import skew
+from KMTNET_Algorithm import run_kmtnet_fit
 
 # Initialize development kit client
 dk.init()
@@ -118,21 +119,19 @@ class microlensing(dk.Filter):
         plt.ylabel('Flux')
         plt.legend()
 
-    def is_known_other_phenomenon(self, locus):
+    def is_known_other_phenomenon(self, locus, locus_params):
         """
         Method to check the locus' pre-existing parameters indicated that it has
         been identified or is likely to be a variable of a type other than microlensing
 
         :param locus:
+        :param locus_params:
         :return: boolean
         """
 
         # Default result is not a known variable
         known_var = False
-
-        # Extract the full parameter set from the locus and the alert
-        locus_params = locus.to_dict()
-
+        
         # Tunable detection thresholds.
         # Ref: Sokolovsky et al. 2016: https://ui.adsabs.harvard.edu/abs/2017MNRAS.464..274S/abstract
         period_peak_sn_threshold = 20.0  # Based on tests with ZTF alerts
@@ -155,7 +154,26 @@ class microlensing(dk.Filter):
         if 'horizons_targetname' in locus_params['properties'].keys():
             known_var = True
 
+        #FIXME
+        #locus.catalog_objects - matched catalog objects from other surveys - RC3 catalog or SDSS etc
+
         return known_var
+
+    def calculate_eta(mag):
+        """ Via puzle https://github.com/jluastro/puzle/blob/main/puzle/stats.py"""
+        delta = np.sum((np.diff(mag)*np.diff(mag)) / (len(mag)-1))
+        variance = np.var(mag)
+        eta = delta / variance
+        return eta
+
+    def return_eta_residual_slope_offset():
+        """ 
+        Via puzle https://github.com/jluastro/puzle/blob/main/puzle/cands.py
+        TODO is 6 months and a year - calculate slope and intercept based on real Rubin data
+        """
+        slope = 3.8187919463087248
+        offset = -0.07718120805369133
+        return slope, offset
 
     def is_microlensing_candidate(self, locus, times, mags, errors):
         """
@@ -164,10 +182,13 @@ class microlensing(dk.Filter):
         if len(times) < 10:  # Too few data points
             return False
 
+        # Extract the full parameter set from the locus and the alert
+        locus_params = locus.to_dict()
+
         # Use the pre-calculated properties of the locus to eliminate those
         # which show signs of variability, e.g. in their periodicity signature or
         # the Stetson-K index
-        known_var = self.is_known_other_phenomenon(locus)
+        known_var = self.is_known_other_phenomenon(locus, locus_params)
         if known_var:
             return False
 
@@ -185,14 +206,16 @@ class microlensing(dk.Filter):
         # Do check for existance since if there's only one band of data, only one will exist
         eta_r_exists = 'feature_eta_e_magn_r' in locus_params['properties'].keys()
         eta_g_exists = 'feature_eta_e_magn_g' in locus_params['properties'].keys()
+        eta_r = locus_params['properties']['feature_eta_e_magn_r']
+        eta_g = locus_params['properties']['feature_eta_e_magn_g']
         if eta_r_exists and eta_g_exists:
-            if locus_params['properties']['feature_eta_e_magn_r'] >= eta_thresh and locus_params['properties']['feature_eta_e_magn_g'] >= eta_thresh:
+            if eta_r >= eta_thresh and eta_g >= eta_thresh:
                 return False
         elif eta_r_exists:
-            if locus_params['properties']['feature_eta_e_magn_r'] >= eta_thresh:
+            if eta_r >= eta_thresh:
                 return False
         elif eta_g_exists:
-            if locus_params['properties']['feature_eta_e_magn_g'] >= eta_thresh:
+            if eta_g >= eta_thresh:
                 return False
 
         # 2. Check variability (microlensing should have a clear peak)
@@ -215,21 +238,32 @@ class microlensing(dk.Filter):
 
         # try:
         popt, _ = curve_fit(paczynski, times, flxs, p0=initial_guess, sigma=flx_errs)
-        chi2 = np.sum(((flxs - paczynski(times, *popt)) / flx_errs) ** 2) / len(times)
+        resid = flxs - paczynski(times, *popt)
+        chi2 = np.sum((resid / flx_errs) ** 2) / len(times)
 
         # 4. Apply a simple chi2 threshold
-        if chi2 < 2:  # Well-fit light curves pass
-            return True
+        if chi2 >= 2:  # Poor-fit light curves fails
+            return False
         # except RuntimeError:
         #     return False  # Fit failed
 
-        # TODO - Natasha add von Neumann residual (subtract out microlensing and see if you're still correlated)
+        eta_resid = self.calculate_eta(resid)
+        eta_slope, eta_offset = self.return_eta_residual_slope_offset()
+        if eta_r_exists and eta_g_exists:
+            if (eta_resid < eta_r*eta_slope + eta_offset) and (eta_resid < eta_g*eta_slope + eta_offset):
+                return False
+        elif eta_r_exists:
+            if (eta_resid < eta_r*eta_slope + eta_offset):
+                return False
+        elif eta_g_exists:
+            if (eta_resid < eta_g*eta_slope + eta_offset):
+                return False
 
         # TODO - Rache potentially query full lightcurve if not already there and if possible
 
         # TODO - Natasha add parallax microlensing fit
 
-        return False
+        return True
     def run(self, locus):
         print('Processing Locus:', locus.locus_id)
 

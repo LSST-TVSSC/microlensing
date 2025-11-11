@@ -50,7 +50,7 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 import warnings
-import weightedstats as ws
+# import weightedstats as ws
 
 
 
@@ -215,11 +215,11 @@ def run_kmtnet_fit(times, fluxes, flux_errors):
         # Ensure weights are valid (not zero or inf)
         weights = 1.0 / (data_df_interval['flux_err'].values**2)
         valid_weights_indices = ~np.isinf(weights) & ~np.isnan(weights) & (weights > 0)
-        if np.sum(valid_weights_indices) > 0:
-            mean_flux_interval = ws.weighted_mean(data_df_interval['flux'].values[valid_weights_indices],
-                                                  weights[valid_weights_indices])
-        else:
-            mean_flux_interval = np.mean(data_df['flux'].values)
+        # if np.sum(valid_weights_indices) > 0:
+        #     mean_flux_interval = ws.weighted_mean(data_df_interval['flux'].values[valid_weights_indices],
+        #                                           weights[valid_weights_indices])
+        # else:
+        mean_flux_interval = np.mean(data_df['flux'].values)
 
     # Compute chi2 for flat line fit
     chi2_linearfit = np.sum((data_df['flux'] - mean_flux_interval)**2 / (data_df['flux_err']) ** 2)
