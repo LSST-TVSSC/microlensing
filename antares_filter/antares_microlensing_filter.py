@@ -27,9 +27,49 @@ def paczynski(t, t0, u0, tE, F_s):
     F_s : source flux
     F_b : blended flux
     """
-    u = np.sqrt(u0 ** 2 + ((t - t0) / tE) ** 2)
-    A = (u ** 2 + 2) / (u * np.sqrt(u ** 2 + 4))
-    return F_s * (A - 1) + (1 - F_s)
+    u = np.sqrt(u0**2 + ((t - t0) / tE) ** 2)
+    A = (u**2 + 2) / (u * np.sqrt(u**2 + 4))
+    return F_s * (A) + (1-F_s)
+    
+def fit_paczynski(times, mags, flxs, flx_errs):
+    """
+    Fit the Paczyński microlensing model to flux data.
+    Returns best-fit parameters and chi-squared value.
+    """
+    if len(times) < 4:
+        return None, None  # Not enough data
+
+    # initial guesses
+    t0_guess = times[np.argmin(flxs)]
+    u0_guess = 1.0 / (np.max(flxs))
+
+    tE_guess = 20.0
+    F0_guess = 0.5
+
+
+    initial_guess = [t0_guess, u0_guess, tE_guess, F0_guess]
+
+    bounds = (
+                        [times.min() - 50, 0, 1.0, 0.0],
+                        [times.max() + 50, np.inf, 500.0, 1]
+                    )
+
+
+    try:
+        popt, _ = curve_fit(
+            paczynski,
+            times, flxs,
+            p0=initial_guess,
+            sigma=flx_errs,
+            bounds=bounds,
+
+            maxfev=5000
+        )
+        chi2 = np.sum(((flxs - paczynski(times, *popt)) / flx_errs) ** 2) / len(times)
+        return popt, chi2
+    except Exception as e:
+        print(f"  Paczynski fitting error: {e}")
+        return None, None
 
 
 def mag_to_flux(mag, F0=1.0):
@@ -99,25 +139,6 @@ class microlensing(dk.Filter):
         mags_err = dn['ztf_sigmapsf'][dn['ztf_fid']==1]
         flxs = mag_to_flux(mags)
         flx_errs = magerr_to_fluxerr(mags, mags_err)
-        
-        t0_guess = times[np.argmin(mags)]  # Min mag is peak time
-        u0_guess = 1/(np.max(flxs))
-
-        initial_fit  = paczynski(times,
-                                     t0_guess, 
-                                     u0_guess, 
-                                     20, 
-                                     0.5)
-
-        # plt.gca().invert_yaxis()
-        plt.scatter(times, 
-                    flxs, color='g', label='g_band')
-        plt.plot(times, 
-                 initial_fit, color='b', label='initial fit')
-        
-        plt.xlabel('Time (mjd)')
-        plt.ylabel('Flux')
-        plt.legend()
 
     def is_known_other_phenomenon(self, locus, locus_params):
         """
@@ -233,16 +254,8 @@ class microlensing(dk.Filter):
         flx_errs = magerr_to_fluxerr(mags, errors)
 
         # 3. Perform a lightweight template fit (Paczyński model)
-        # TODO - Somayeh switch to KMTNet algorithm
-        t0_guess = times[np.argmin(mags)]  # Min mag is peak time
-        u0_guess = 1/(np.max(flxs))
-        initial_guess = [t0_guess, 
-                         u0_guess, 
-                         20, 
-                         0.5]  # Initial params
 
-        # try:
-        popt, _ = curve_fit(paczynski, times, flxs, p0=initial_guess, sigma=flx_errs)
+        popt, chi2_paczynski = fit_paczynski(times, mags, flxs, flx_errs)
         resid = flxs - paczynski(times, *popt)
         chi2 = np.sum((resid / flx_errs) ** 2) / len(times)
 
