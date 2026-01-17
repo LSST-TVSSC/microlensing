@@ -1,0 +1,31 @@
+{% extends "tom_common/base.html" %}
+
+{% block content %}
+<h1>Zooniverse Target Detail</h1>
+
+<div>
+    <h2>{{ object.identifier }}</h2>
+    <ul>
+        <li><strong>Survey:</strong> {{ object.survey }}</li>
+        <li><strong>Created:</strong> {{ object.created }}</li>
+        <li><strong>Updated:</strong> {{ object.updated }}</li>
+        <!-- Add more fields as needed -->
+    </ul>
+    <h3>Subjects</h3>
+    <ul>
+        {% for subject in object.zooniversesubject_set.all %}
+        <li>{{ subject.subject_id }} (<a href="{{ subject.talk_url }}">Zooniverse Talk</a>)
+            <ul>
+                {% for k, v in subject.annotation_totals.items %}
+                <li>{{ k }}: {{ v }}</li>
+                {% endfor %}
+            </ul>
+        </li>
+        {% empty %}
+        <li>No subjects found.</li>
+        {% endfor %}
+    </ul>
+</div>
+
+<a href="{% url 'zooniversetarget_list' %}">Back to list</a>
+{% endblock %}

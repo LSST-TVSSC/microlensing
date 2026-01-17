@@ -1,0 +1,16 @@
+{% extends "tom_common/base.html" %}
+
+{% block content %}
+<h1>Zooniverse Target List</h1>
+<ul>
+    {% for object in object_list %}
+    <li>
+        <a href="{% url 'zooniverse_target_detail' object.pk %}">
+            {{ object }}
+        </a>
+    </li>
+    {% empty %}
+    <li>No targets available.</li>
+    {% endfor %}
+</ul>
+{% endblock %}
