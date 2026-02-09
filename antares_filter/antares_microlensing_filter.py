@@ -167,7 +167,7 @@ class microlensing(dk.Filter):
             known_var = True
 
         # Check whether this event is associated with a GW event
-        if 'plausible_gw_events_assoc' in locus.alert.properties.keys():
+        if 'plausible_gw_events_assoc' in locus_params['properties'].keys():
             known_var = True
 
         # If the alert has parameters from JPL Horizons, then it is likely cause by
