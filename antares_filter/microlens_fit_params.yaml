@@ -1,0 +1,14 @@
+add_error_on_photometry: false
+astrom_data: None
+astrom_files: []
+custom_additional_param_names: null
+model: PSPL_Phot_noPar_Param2
+multiply_error_on_photometry: false
+phot_data: alert
+phot_files:
+- locus
+run_date: '2026-02-23'
+target: single_event
+use_ast_optional_params: true
+use_phot_optional_params: true
+wrapped_params: null
