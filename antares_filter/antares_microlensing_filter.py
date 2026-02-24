@@ -442,8 +442,8 @@ class microlensing(BaseFilter):
                                           outputfiles_basename=outbase)
 
         fitter.priors['tE'] = model_fitter.make_gen(1, 400)
-        # Rubin 3 years before start and 3 years before end of Rubin survey
-        fitter.priors['t0'] = model_fitter.make_gen(60000, 65840)
+        #1 year before start and 1 years after end of data
+        fitter.priors['t0'] = model_fitter.make_gen(np.min(times) - 365.25, np.max(times) + 365.25)
         fitter.priors['b_sff1'] = model_fitter.make_gen(0.001, 1.25)
 
         fitter.solve()

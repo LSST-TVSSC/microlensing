@@ -7,7 +7,7 @@ multiply_error_on_photometry: false
 phot_data: alert
 phot_files:
 - locus
-run_date: '2026-02-23'
+run_date: '2026-02-24'
 target: single_event
 use_ast_optional_params: true
 use_phot_optional_params: true
