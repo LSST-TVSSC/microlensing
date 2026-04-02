@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy.stats import skew
 from antares_devkit.models import BaseFilter
-from bagle import model, model_fitter
+#from bagle import model, model_fitter
 from astropy.stats import sigma_clip
 from scipy.stats import chi2
 import math
@@ -371,23 +371,25 @@ class microlensing(BaseFilter):
         # Do check for existance since if there's only one band of data, only one will exist
         eta_r_exists = 'feature_eta_e_magn_r' in locus_params.keys()
         eta_g_exists = 'feature_eta_e_magn_g' in locus_params.keys()
-        eta_r = locus_params['feature_eta_e_magn_r']
-        eta_g = locus_params['feature_eta_e_magn_g']
+        if eta_r_exists:
+            eta_r = locus_params['feature_eta_e_magn_r']
+        if eta_g_exists:
+            eta_g = locus_params['feature_eta_e_magn_g']
         if eta_r_exists and eta_g_exists:
             if eta_r >= eta_thresh and eta_g >= eta_thresh:
                 if verbose == True:
                     print('Failed von Neumann threshold')
-                # return False
+                return False
         elif eta_r_exists:
             if eta_r >= eta_thresh:
                 if verbose == True:
                     print('Failed von Neumann threshold')
-                # return False
+                return False
         elif eta_g_exists:
             if eta_g >= eta_thresh:
                 if verbose == True:
                     print('Failed von Neumann threshold')
-                # return False
+                return False
 
         # 2. Check variability (microlensing should have a clear peak)
         # Decrease threshold with longer baseline
@@ -432,38 +434,38 @@ class microlensing(BaseFilter):
                 if verbose == True:
                     print('Failed eta residual threshold')
                 return False
+        
+        # outbase = 'microlens_fit_'
+        # data = self.make_bagle_data_dir(times, mags, errors)
+        # fitter = model_fitter.PSPL_Solver(data,
+        #                                   model.PSPL_Phot_noPar_Param2,
+        #                                   importance_nested_sampling=False,
+        #                                   n_live_points=200,
+        #                                   outputfiles_basename=outbase)
 
-        outbase = 'microlens_fit_'
-        data = self.make_bagle_data_dir(times, mags, errors)
-        fitter = model_fitter.PSPL_Solver(data,
-                                          model.PSPL_Phot_noPar_Param2,
-                                          importance_nested_sampling=False,
-                                          n_live_points=200,
-                                          outputfiles_basename=outbase)
+        # fitter.priors['tE'] = model_fitter.make_gen(1, 400)
+        # #1 year before start and 1 years after end of data
+        # fitter.priors['t0'] = model_fitter.make_gen(np.min(times) - 365.25, np.max(times) + 365.25)
+        # fitter.priors['b_sff1'] = model_fitter.make_gen(0.001, 1.25)
 
-        fitter.priors['tE'] = model_fitter.make_gen(1, 400)
-        #1 year before start and 1 years after end of data
-        fitter.priors['t0'] = model_fitter.make_gen(np.min(times) - 365.25, np.max(times) + 365.25)
-        fitter.priors['b_sff1'] = model_fitter.make_gen(0.001, 1.25)
+        # fitter.solve()
 
-        fitter.solve()
+        # fit_vals = fitter.get_best_fit(def_best='map')
+        # chi2_red_bagle = fitter.calc_chi2(params=fit_vals) / (npts - len(fit_vals))
+        # chi2_red_flat = self.calc_chi2_mean(times, mags, errors)
 
-        fit_vals = fitter.get_best_fit(def_best='map')
-        chi2_red_bagle = fitter.calc_chi2(params=fit_vals) / (npts - len(fit_vals))
-        chi2_red_flat = self.calc_chi2_mean(times, mags, errors)
+        # # Delta chi^2 threshold
+        # delta_chi2_threshold = 100
+        # if np.abs(chi2_red_bagle - chi2_red_flat) < delta_chi2_threshold:
+        #     if verbose == True:
+        #         print('Failed BAGLE fit chi^2 threshold', 'delta chi^2 = ', np.abs(chi2_red_bagle - chi2_red_flat))
+        #     return False
 
-        # Delta chi^2 threshold
-        delta_chi2_threshold = 100
-        if np.abs(chi2_red_bagle - chi2_red_flat) < delta_chi2_threshold:
-            if verbose == True:
-                print('Failed BAGLE fit chi^2 threshold', 'delta chi^2 = ', np.abs(chi2_red_bagle - chi2_red_flat))
-            return False
-
-        fit_vals['b_sff'] = fit_vals.pop('b_sff1')
-        fit_vals['mag_base'] = fit_vals.pop('mag_base1')
-        for key in fit_vals.keys():
-            locus.set_property('feature_microlensing_' + key, fit_vals[key])
-        locus.set_property('feature_microlensing_chi2_red', chi2_red_bagle)
+        # fit_vals['b_sff'] = fit_vals.pop('b_sff1')
+        # fit_vals['mag_base'] = fit_vals.pop('mag_base1')
+        # for key in fit_vals.keys():
+        #     locus.set_property('feature_microlensing_' + key, fit_vals[key])
+        # locus.set_property('feature_microlensing_chi2_red', chi2_red_bagle)
 
         return True
 
@@ -488,8 +490,6 @@ class microlensing(BaseFilter):
             times, mags, errors = band_data['ant_mjd'].values, band_data['ant_mag'].values, band_data[
                 'ant_magerr'].values
 
-            if self.is_microlensing_candidate(locus, times, mags, errors, verbose=True):
+            if self.is_microlensing_candidate(locus, times, mags, errors, verbose=False):
                 print(f'Locus {locus.locus_id} is a microlensing candidate in band {band}')
-                locus.tags.add('microlensing_candidate')
-
-        return
+                locus.tag('microlensing_candidate')
