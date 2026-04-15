@@ -5,19 +5,10 @@
 import antares_devkit as dk
 from antares_devkit.models import DevKitLocus
 
-import numpy as np
-from astropy.table import MaskedColumn
 import warnings
-import astropy
-import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
-from scipy.stats import skew
 from antares_devkit.models import BaseFilter
 #from bagle import model, model_fitter
-from astropy.stats import sigma_clip
-from scipy.stats import chi2
 import math
-from astropy.stats import sigma_clip
 
 
 class microlensing(BaseFilter):
@@ -34,6 +25,11 @@ class microlensing(BaseFilter):
         }
     ]
 
+    np = None
+    curve_fit = None
+    skew = None
+    sigma_clip = None
+
     # Define a Paczyński microlensing model
     def paczynski(self, t, t0, u0, tE, F_s):
         """
@@ -44,8 +40,8 @@ class microlensing(BaseFilter):
         F_s : source flux
         F_b : blended flux
         """
-        u = np.sqrt(u0 ** 2 + ((t - t0) / tE) ** 2)
-        A = (u ** 2 + 2) / (u * np.sqrt(u ** 2 + 4))
+        u = self.np.sqrt(u0 ** 2 + ((t - t0) / tE) ** 2)
+        A = (u ** 2 + 2) / (u * self.np.sqrt(u ** 2 + 4))
         return F_s * (A) + (1 - F_s)
 
     def fit_paczynski(self, times, mags, flxs, flx_errs):
@@ -57,8 +53,8 @@ class microlensing(BaseFilter):
             return None, None  # Not enough data
 
         # initial guesses
-        t0_guess = times[np.argmin(flxs)]
-        u0_guess = 1.0 / (np.max(flxs))
+        t0_guess = times[self.np.argmin(flxs)]
+        u0_guess = 1.0 / (self.np.max(flxs))
 
         tE_guess = 20.0
         F0_guess = 0.5
@@ -67,11 +63,11 @@ class microlensing(BaseFilter):
 
         bounds = (
             [times.min() - 50, 0, 1.0, 0.0],
-            [times.max() + 50, np.inf, 500.0, 1]
+            [times.max() + 50, self.np.inf, 500.0, 1]
         )
 
         try:
-            popt, _ = curve_fit(
+            popt, _ = self.curve_fit(
                 self.paczynski,
                 times, flxs,
                 p0=initial_guess,
@@ -80,7 +76,7 @@ class microlensing(BaseFilter):
 
                 maxfev=5000
             )
-            chi2 = np.sum(((flxs - self.paczynski(times, *popt)) / flx_errs) ** 2) / len(times)
+            chi2 = self.np.sum(((flxs - self.paczynski(times, *popt)) / flx_errs) ** 2) / len(times)
             return popt, chi2
         except Exception as e:
             print(f"  Paczynski fitting error: {e}")
@@ -98,7 +94,7 @@ class microlensing(BaseFilter):
         - flux : flux corresponding to the magnitude
         """
         flux = F0 * 10 ** (-0.4 * mag)
-        flux = flux / np.min(flux)
+        flux = flux / self.np.min(flux)
         return flux
 
     def magerr_to_fluxerr(self, mag, mag_err, F0=1.0):
@@ -114,7 +110,7 @@ class microlensing(BaseFilter):
         - flux_err : flux uncertainty
         """
         flux = self.mag_to_flux(mag, F0)
-        flux_err = 0.4 * np.log(10) * flux * mag_err
+        flux_err = 0.4 * self.np.log(10) * flux * mag_err
         return flux_err
 
     # Chi squared functions for BAGLE model
@@ -138,7 +134,7 @@ class microlensing(BaseFilter):
         lnL_phot_nn = self.log_likely_photometry(times, mag, mag_err)
 
         # Calculate the chi2 and constants for just a single filter.
-        lnL_const_phot_nn = -0.5 * np.log(2.0 * math.pi * mag_err ** 2)
+        lnL_const_phot_nn = -0.5 * self.np.log(2.0 * math.pi * mag_err ** 2)
         lnL_const_phot_nn = lnL_const_phot_nn.sum()
 
         chi2_phot_nn = (lnL_phot_nn - lnL_const_phot_nn) / -0.5
@@ -235,8 +231,8 @@ class microlensing(BaseFilter):
             List of chi^2 values from the model and photometric data.
 
         """
-        sigma_clip_mag = sigma_clip(mag_obs)
-        mag_model = np.mean(sigma_clip_mag)
+        sigma_clip_mag = self.sigma_clip(mag_obs)
+        mag_model = self.np.mean(sigma_clip_mag)
 
         chi2 = ((mag_obs - mag_model) / mag_err_obs) ** 2
 
@@ -258,7 +254,7 @@ class microlensing(BaseFilter):
         List of ln(likelihood constants).
 
         """
-        lnL_const = -0.5 * np.log(2.0 * math.pi * err_obs ** 2)
+        lnL_const = -0.5 * self.np.log(2.0 * math.pi * err_obs ** 2)
 
         return lnL_const
 
@@ -281,12 +277,16 @@ class microlensing(BaseFilter):
         stetson_k_threshold = 0.8  # The expected K-value for a constant lightcurve with Gaussian noise
 
         # Check for periodicity
-        if locus_params['feature_period_s_to_n_0_magn_r'] >= period_peak_sn_threshold:
-            known_var = True
+        feature_period_s_to_n_0_magn_r_exists = 'feature_period_s_to_n_0_magn_r' in locus_params.keys()
+        if feature_period_s_to_n_0_magn_r_exists:
+            if locus_params['feature_period_s_to_n_0_magn_r'] >= period_peak_sn_threshold:
+                known_var = True
 
         # Check Stetson-K index
-        if locus_params['feature_stetson_k_magn_r'] <= stetson_k_threshold:
-            known_var = True
+        feature_stetson_k_magn_r_exists = 'feature_stetson_k_magn_r' in locus_params.keys()
+        if feature_stetson_k_magn_r_exists:
+            if locus_params['feature_stetson_k_magn_r'] <= stetson_k_threshold:
+                known_var = True
 
         # If the alert has parameters from JPL Horizons, then it is likely cause by
         # a Solar System object
@@ -305,8 +305,8 @@ class microlensing(BaseFilter):
 
     def calculate_eta(self, mag):
         """ Via puzle https://github.com/jluastro/puzle/blob/main/puzle/stats.py"""
-        delta = np.sum((np.diff(mag) * np.diff(mag)) / (len(mag) - 1))
-        variance = np.var(mag)
+        delta = self.np.sum((self.np.diff(mag) * self.np.diff(mag)) / (len(mag) - 1))
+        variance = self.np.var(mag)
         eta = delta / variance
         return eta
 
@@ -355,13 +355,13 @@ class microlensing(BaseFilter):
             return False
 
         # Sort data by time
-        sorted_idx = np.argsort(times)
+        sorted_idx = self.np.argsort(times)
         times, mags, errors = times[sorted_idx], mags[sorted_idx], errors[sorted_idx]
         npts = len(times)
 
         # 1. Check for smoothness (low skewness means symmetric light curve)
         # TODO: Check for threshold with parallax and maybe remove or lower threshold
-        if abs(skew(mags)) > 1:
+        if abs(self.skew(mags)) > 1:
             if verbose == True:
                 print('Too skewed')
             return False
@@ -394,7 +394,7 @@ class microlensing(BaseFilter):
         # 2. Check variability (microlensing should have a clear peak)
         # Decrease threshold with longer baseline
         # Q for broker - 365 days or full lightcurve?
-        if np.ptp(mags) < 0.5:  # Peak-to-peak magnitude difference
+        if self.np.ptp(mags) < 0.5:  # Peak-to-peak magnitude difference
             if verbose == True:
                 print('Too small magnitude change')
             return False
@@ -406,7 +406,7 @@ class microlensing(BaseFilter):
 
         popt, chi2_paczynski = self.fit_paczynski(times, mags, flxs, flx_errs)
         resid = flxs - self.paczynski(times, *popt)
-        chi2_val = np.sum((resid / flx_errs) ** 2) / npts
+        chi2_val = self.np.sum((resid / flx_errs) ** 2) / npts
 
         # 4. Apply a simple chi2 threshold
         if chi2_val > 2:  # Poor-fit light curves fails
@@ -445,7 +445,7 @@ class microlensing(BaseFilter):
 
         # fitter.priors['tE'] = model_fitter.make_gen(1, 400)
         # #1 year before start and 1 years after end of data
-        # fitter.priors['t0'] = model_fitter.make_gen(np.min(times) - 365.25, np.max(times) + 365.25)
+        # fitter.priors['t0'] = model_fitter.make_gen(self.np.min(times) - 365.25, self.np.max(times) + 365.25)
         # fitter.priors['b_sff1'] = model_fitter.make_gen(0.001, 1.25)
 
         # fitter.solve()
@@ -456,9 +456,9 @@ class microlensing(BaseFilter):
 
         # # Delta chi^2 threshold
         # delta_chi2_threshold = 100
-        # if np.abs(chi2_red_bagle - chi2_red_flat) < delta_chi2_threshold:
+        # if self.np.abs(chi2_red_bagle - chi2_red_flat) < delta_chi2_threshold:
         #     if verbose == True:
-        #         print('Failed BAGLE fit chi^2 threshold', 'delta chi^2 = ', np.abs(chi2_red_bagle - chi2_red_flat))
+        #         print('Failed BAGLE fit chi^2 threshold', 'delta chi^2 = ', self.np.abs(chi2_red_bagle - chi2_red_flat))
         #     return False
 
         # fit_vals['b_sff'] = fit_vals.pop('b_sff1')
@@ -470,6 +470,18 @@ class microlensing(BaseFilter):
         return True
 
     def _run(self, locus):
+        import numpy as np
+        import astropy
+        from scipy.optimize import curve_fit
+        from scipy.stats import skew
+        from astropy.stats import sigma_clip
+
+        self.np = np
+        self.curve_fit = curve_fit
+        self.skew = skew
+        self.sigma_clip = sigma_clip
+
+        
         print('Processing Locus:', locus.locus_id)
 
         with warnings.catch_warnings():
