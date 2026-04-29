@@ -281,11 +281,19 @@ class microlensing(BaseFilter):
         if feature_period_s_to_n_0_magn_r_exists:
             if locus_params['feature_period_s_to_n_0_magn_r'] >= period_peak_sn_threshold:
                 known_var = True
+        feature_period_s_to_n_0_magn_g_exists = 'feature_period_s_to_n_0_magn_g' in locus_params.keys()
+        if feature_period_s_to_n_0_magn_g_exists:
+            if locus_params['feature_period_s_to_n_0_magn_g'] >= period_peak_sn_threshold:
+                known_var = True
 
         # Check Stetson-K index
         feature_stetson_k_magn_r_exists = 'feature_stetson_k_magn_r' in locus_params.keys()
         if feature_stetson_k_magn_r_exists:
             if locus_params['feature_stetson_k_magn_r'] <= stetson_k_threshold:
+                known_var = True
+        feature_stetson_k_magn_g_exists = 'feature_stetson_k_magn_g' in locus_params.keys()
+        if feature_stetson_k_magn_g_exists:
+            if locus_params['feature_stetson_k_magn_g'] <= stetson_k_threshold:
                 known_var = True
 
         # If the alert has parameters from JPL Horizons, then it is likely cause by
@@ -299,6 +307,20 @@ class microlensing(BaseFilter):
         # in the list of keys.  So we can use that to check for matches with galaxy catalogs.
         # Of those available in the list the Gemini NIR survey of known quasars is the closest
         if 'gnirs_dqs' in locus.catalog_objects.keys():
+            known_var = True
+
+        # Check if object has extragalactic tag defined as the following
+        # This filter finds locus that falls within 1 arcsec of a source listed 
+        # in the 2MASS extended source catalog, the NASA/IPAC Extragalactic Database, 
+        # the NYU Value-Added Galaxy Catalog, the Sloan Digitized Sky Survey Galaxy catalog, 
+        # and the Veron Catalog of Quasars & AGNs, and within a radius corresponding to 
+        # respective semi-major axis for the Third Reference Catalog of bright galaxies. 
+        # As new galaxy catalogs are added in ANTARES, the filter will be updated in the extragalactic tag.
+        if 'extragalactic' in locus.tags:
+            known_var = True
+
+        # Check if it was identified as young extragalactic candidate
+        if 'young_extragalactic_candidate' in locus.tags:
             known_var = True
 
         return known_var
@@ -333,7 +355,7 @@ class microlensing(BaseFilter):
 
         return data
 
-    def is_microlensing_candidate(self, locus, times, mags, errors, verbose):
+    def is_microlensing_candidate(self, locus, times, mags, errors, band, verbose):
         """
         Example of a set of Microlensing detection criteria
         """
@@ -341,6 +363,7 @@ class microlensing(BaseFilter):
             if verbose == True:
                 print('Too Few Datapoints')
             return False
+
 
         # Extract the full parameter set from the locus and the alert
         locus_params = locus.properties
@@ -359,12 +382,14 @@ class microlensing(BaseFilter):
         times, mags, errors = times[sorted_idx], mags[sorted_idx], errors[sorted_idx]
         npts = len(times)
 
+
         # 1. Check for smoothness (low skewness means symmetric light curve)
         # TODO: Check for threshold with parallax and maybe remove or lower threshold
         if abs(self.skew(mags)) > 1:
             if verbose == True:
                 print('Too skewed')
             return False
+
 
         # TODO is 6 months and a year - calculate this based on percentile of real data
         eta_thresh = 1.255  # Avg from ZTF level 2 (low eta)
@@ -391,10 +416,12 @@ class microlensing(BaseFilter):
                     print('Failed von Neumann threshold')
                 return False
 
+
         # 2. Check variability (microlensing should have a clear peak)
         # Decrease threshold with longer baseline
-        # Q for broker - 365 days or full lightcurve?
-        if self.np.ptp(mags) < 0.5:  # Peak-to-peak magnitude difference
+        # Include errorbars on data
+        amp = self.np.max(mags - errors) - self.np.min(mags + errors)
+        if amp < 0.5:  # Peak-to-peak magnitude difference
             if verbose == True:
                 print('Too small magnitude change')
             return False
@@ -434,6 +461,7 @@ class microlensing(BaseFilter):
                 if verbose == True:
                     print('Failed eta residual threshold')
                 return False
+
         
         # outbase = 'microlens_fit_'
         # data = self.make_bagle_data_dir(times, mags, errors)
@@ -467,6 +495,17 @@ class microlensing(BaseFilter):
         #     locus.set_property('feature_microlensing_' + key, fit_vals[key])
         # locus.set_property('feature_microlensing_chi2_red', chi2_red_bagle)
 
+        if 'microlensing_candidate_band' in locus.properties.keys():
+            locus.properties['microlensing_candidate_band'] += ',' + band
+        else:
+            locus.set_property('microlensing_candidate_band', band)
+        
+        locus.set_property('feature_microlensing_simple_{}_t0'.format(band), popt[0])
+        locus.set_property('feature_microlensing_simple_{}_u0'.format(band), popt[1])
+        locus.set_property('feature_microlensing_simple_{}_tE'.format(band), popt[2])
+        locus.set_property('feature_microlensing_simple_{}_Fs'.format(band), popt[3])
+        locus.set_property('feature_microlensing_simple_{}_chi2'.format(band), chi2_val)
+
         return True
 
     def _run(self, locus):
@@ -498,10 +537,11 @@ class microlensing(BaseFilter):
         # Split into g-band and i-band
         band_list = np.unique(data['ant_passband'])
         for band in band_list:  # 1 = g-band, 2 = i-band
+            print(band)
             band_data = data[data['ant_passband'] == band]
             times, mags, errors = band_data['ant_mjd'].values, band_data['ant_mag'].values, band_data[
                 'ant_magerr'].values
 
-            if self.is_microlensing_candidate(locus, times, mags, errors, verbose=False):
+            if self.is_microlensing_candidate(locus, times, mags, errors, band, verbose=False):
                 print(f'Locus {locus.locus_id} is a microlensing candidate in band {band}')
                 locus.tag('microlensing_candidate')
