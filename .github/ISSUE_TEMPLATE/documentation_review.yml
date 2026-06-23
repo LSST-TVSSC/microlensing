@@ -1,6 +1,6 @@
 name: Documentation Review Task
 description: Review documentation for brokers, APIs, or software packages.
-title: ""
+title: "[Docs]: "
 labels:
   - sprint
   - documentation
