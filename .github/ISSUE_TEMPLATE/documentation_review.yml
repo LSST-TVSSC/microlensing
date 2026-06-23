@@ -1,0 +1,37 @@
+name: Documentation Review Task
+description: Review documentation for brokers, APIs, or software packages.
+title: ""
+labels:
+  - sprint
+  - documentation
+body:
+  - type: input
+    id: package
+    attributes:
+      label: Package/Broker Name
+      placeholder: ANTARES
+
+  - type: textarea
+    id: objectives
+    attributes:
+      label: Review Objectives
+      placeholder: |
+        Understand:
+        - APIs
+        - Data schema
+        - Authentication
+        - Filtering mechanisms
+
+  - type: textarea
+    id: findings
+    attributes:
+      label: Findings
+
+  - type: textarea
+    id: action_items
+    attributes:
+      label: Action Items
+      placeholder: |
+        [ ] Create example notebook
+        [ ] Implement API wrapper
+        [ ] Update wiki

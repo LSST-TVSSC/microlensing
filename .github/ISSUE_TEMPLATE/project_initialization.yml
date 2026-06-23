@@ -1,6 +1,6 @@
 name: Microlensing Sprint Project Proposal
 description: Propose a new project or work package for the Microlensing Sprint.
-title: "[Project]: "
+title: " "
 labels:
   - sprint
   - microlensing
@@ -37,11 +37,11 @@ body:
     id: scientific_motivation
     attributes:
       label: Scientific Motivation
-      description: Why is this project important for Rubin LSST microlensing science?
+      description: What is the motivation for this project in the context of Rubin LSST microlensing science?
       placeholder: |
         Example:
         Develop an ANTARES filter capable of identifying microlensing events
-        in Rubin alert streams and compare performance with ALeRCE and OPM.
+        in Rubin alert streams and compare performance with ALeRCE and Fink.
 
     validations:
       required: true
@@ -54,7 +54,7 @@ body:
       placeholder: |
         - Integrate ANTARES with Rubin alert streams
         - Cross-match with OGLE disk events
-        - Benchmark performance against ALeRCE
+        - Benchmark performance against ALeRCE and Fink
         - Document deployment procedure
     validations:
       required: true
@@ -97,12 +97,12 @@ body:
     attributes:
       label: Milestones
       placeholder: |
-        [ ] Literature review
-        [ ] Data acquisition
-        [ ] Prototype implementation
-        [ ] Validation
-        [ ] Integration
-        [ ] Documentation
+        - [ ] Literature review
+        - [ ] Data acquisition
+        - [ ] Prototype implementation
+        - [ ] Validation
+        - [ ] Integration
+        - [ ] Documentation
 
   - type: input
     id: leads
